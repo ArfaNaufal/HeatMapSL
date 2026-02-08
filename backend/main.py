@@ -206,7 +206,8 @@ def delete_heatmap_by_sessionid(session_id: int, token: str = Depends(oauth2_sch
         raise HTTPException(status_code=500, detail="Failed to delete heatmap file from disk")
 
 @app.get("/api/heatmaps/file/{session_id}")
-async def get_secure_file(session_id: int, current_user = Depends(get_current_user)):
+async def get_secure_file(session_id: int, token: str = Depends(oauth2_scheme)):
+    user_data = authService.decode_token(token)
     row = db.findHeatmap(session_id)[["image_path", "user_id"]].loc[0].values
 
     if row.size == 0:
@@ -214,7 +215,7 @@ async def get_secure_file(session_id: int, current_user = Depends(get_current_us
     
     file_path, owner_id = row
 
-    if (int(owner_id) != current_user["id"]) and current_user["role"] != 2:
+    if (int(owner_id) != user_data["id"]) and user_data["role"] != 2:
         raise HTTPException(status_code=403, detail="Unauthorized access to this data")
 
     return FileResponse(file_path)
