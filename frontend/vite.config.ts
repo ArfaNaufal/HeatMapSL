@@ -5,7 +5,6 @@ import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 
 export default defineConfig(( { mode } ) => {
-  const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [
       // The React and Tailwind plugins are both required for Make, even if
@@ -14,10 +13,18 @@ export default defineConfig(( { mode } ) => {
       tailwindcss(),
       basicSsl(),
     ],
+    
     server: {
-      port: parseInt(env.VITE_PORT) || 5173,
+      port: 3000,
       https: true,
       host: true,
+      proxy: {
+        '/api': {
+          target: 'http://127.0.0.1:8000', // Use IP instead of localhost
+          changeOrigin: true,
+          secure: false,
+        }
+      },
     },
     resolve: {
       alias: {
