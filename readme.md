@@ -7,6 +7,12 @@ This guide covers the instructions for building production Docker images and set
 ## 1. Production Workflow (Docker)
 Use this workflow to build and deploy the finalized application using Docker images.
 
+### Step 0: Setup git clone repo 
+Clone the latest version of repo in your specific folder
+```bash
+git clone https://github.com/Eyapa/EyGazeHeatmap_Frontend_V1 .
+```
+
 ### Step 1: Prepare Environment Variables
 Since the `.env` file is ignored by Git for security, you must create it from the template provided in the repository.
 
@@ -46,7 +52,6 @@ Use this workflow for active coding. It provides **Hot Reloading** and uses the 
 ```bash
 git clone https://github.com/Eyapa/EyGazeHeatmap_Frontend_V1 .
 ```
-
 
 
 1. Navigate to the backend folder:
