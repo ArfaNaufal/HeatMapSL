@@ -7,7 +7,7 @@ services:
       - ./.env
     volumes:
       - ./backend/data:/app/data
-      - ./backend/database.db:/app/database.db
+      - ./backend/db:/app/db
 
   frontend:
     image: ghcr.io/eyapa/eygazeheatmap_frontend_v1:latest

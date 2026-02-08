@@ -49,3 +49,6 @@ frontend/public/images/*
 
 .Dockerignore
 compose.private.yml
+
+# --- OTHERS ---
+*.dev.*

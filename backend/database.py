@@ -3,12 +3,15 @@ from config import Config
 import sqlite3 as sql
 import pandas as pd
 from models import UserCreate
+from pathlib import Path
 
 class Database():
     _connect: sql.Connection
 
     def __init__(self):
         try:
+            if (Path(Config.DB_PATH).exists() == False):
+                Path(Config.DB_PATH).parent.mkdir(parents=True, exist_ok=True)
             self._connect = sql.connect(Config.DB_PATH)
         except Exception as e:
             raise e
