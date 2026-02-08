@@ -11,6 +11,8 @@ backend/__pycache__/
 backend/*.py[cod]
 backend/.venv/
 backend/.env
+backend/services/__pycache__/
+backend/services/*.py[cod]
 backend/database.db
 backend/log.txt
 
