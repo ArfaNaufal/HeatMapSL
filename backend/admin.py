@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 def get_current_admin(token: str = Depends(oauth2_scheme)):
     payload = authService.decode_token(token)
-    if payload["role"] != 2:  # Assuming 2 is Admin
+    if payload["role"] != 2:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can register new users"

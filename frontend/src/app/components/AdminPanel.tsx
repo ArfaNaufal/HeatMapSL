@@ -56,10 +56,10 @@ export function AdminPanel() {
 
     useEffect(() => {
         if (isShowViewHeatmap) {
-        document.body.style.overflow = 'hidden'; // Lock scroll
+        document.body.style.overflow = 'hidden';
         viewModalRef.current?.focus();
         } else {
-        document.body.style.overflow = 'unset';  // Unlock scroll
+        document.body.style.overflow = 'unset';
         }
     }, [isShowViewHeatmap]);
 

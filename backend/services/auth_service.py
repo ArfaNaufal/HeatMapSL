@@ -25,11 +25,9 @@ class AuthService():
         """Creates a JWT token using the secret from config.py."""
         to_encode = data.copy()
         
-        # Set expiration time (e.g., 30 minutes)
         expire = datetime.now(timezone.utc) + timedelta(minutes=Config.ACCESS_TOKEN_EXPIRE_MINUTES)
         to_encode.update({"exp": expire})
         
-        # Sign the token with your secret key
         encoded_jwt = jwt.encode(to_encode, Config.JWT_TOKEN, algorithm=Config.ALGORITHM)
         return encoded_jwt
     

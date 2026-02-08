@@ -22,9 +22,8 @@ export function HeatmapPrediction() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const navigate = useNavigate();
   
-  // Analysis State
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [countdown, setCountdown] = useState(0); // For the 3s prep and 10s record
+  const [countdown, setCountdown] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
 
   const [isShowViewHeatmap, setIsShowViewHeatmap] = useState(false);
@@ -55,7 +54,6 @@ export function HeatmapPrediction() {
     );
   }
 
-  // 1. Gaze Recording Listener
   useEffect(() => {
     const wg = (window as any).webgazer;
     if (isCalibrated && wg.isReady()) {
@@ -64,7 +62,6 @@ export function HeatmapPrediction() {
           const imageEl = imageRef.current;
           const rect = imageEl.getBoundingClientRect();
           
-          // 2. Check if the rect has actual dimensions (prevents division by zero)
           if (rect.width === 0 || rect.height === 0) return;
 
           const relX = data.x - rect.left;
@@ -104,7 +101,6 @@ export function HeatmapPrediction() {
     }
   };
 
-  // Initial load
   useEffect(() => {
     fetchSessions();
   }, []);
@@ -125,22 +121,20 @@ export function HeatmapPrediction() {
     }
   };
 
-  // 2. The Main Analysis Flow
   const startAnalysisSession = async () => {
     if ((await checkSession(sessionName))) return toast.error("Session name already used.");
     if (!sessionName) return toast.error("Please name the session first.");
     if (!isCalibrated) return toast.error("Calibration required!");
 
     setIsAnalyzing(true);
-    setCountdown(3); // 3 seconds to prepare
+    setCountdown(3);
 
-    // Phase 1: Preparation Countdown
     const prepInterval = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(prepInterval);
           startActualRecording();
-          return 10; // Start 10s recording countdown
+          return 10;
         }
         return prev - 1;
       });
@@ -180,13 +174,13 @@ export function HeatmapPrediction() {
 
     const { naturalWidth, naturalHeight } = imageRef.current;
 
-    // Prepare Payload for your API
+
     const payload = {
       name: sessionName,
       user_id: user?.id,
       width: naturalWidth,
       height: naturalHeight,
-      points: gazeHistory.current, // Already scaled to 4K
+      points: gazeHistory.current,
       base64_image: uploadedImage 
     };
 
@@ -234,10 +228,10 @@ export function HeatmapPrediction() {
 
   useEffect(() => {
     if (isShowViewHeatmap) {
-      document.body.style.overflow = 'hidden'; // Lock scroll
+      document.body.style.overflow = 'hidden';
       viewModalRef.current?.focus();
     } else {
-      document.body.style.overflow = 'unset';  // Unlock scroll
+      document.body.style.overflow = 'unset';
     }
   }, [isShowViewHeatmap]);
 
@@ -264,7 +258,7 @@ export function HeatmapPrediction() {
                 ref={imageRef} 
                 src={uploadedImage!} 
                 alt="Stimuli" 
-                className="w-full h-full object-contain" // This ensures the image fills the screen safely
+                className="w-full h-full object-contain"
               />
 
               {/* THE COUNTDOWN INDICATOR (Bottom of Container) */}
@@ -339,7 +333,7 @@ export function HeatmapPrediction() {
 
                       if (!file.type.startsWith('image/')) {
                         toast.error("Invalid file type. Please upload an image (PNG, JPG, etc.).");
-                        e.target.value = ""; // Clear the input
+                        e.target.value = "";
                         return;
                       }
 

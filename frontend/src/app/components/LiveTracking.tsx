@@ -17,7 +17,7 @@ export function LiveTracking() {
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [clickCounts, setClickCounts] = useState<Record<number, number>>({});
   const [gazePoint, setGazePoint] = useState({ x: 50, y: 50 });
-  const [allPointsDone, setAllPointsDone] = useState(false); // New local state to trigger useEffect
+  const [allPointsDone, setAllPointsDone] = useState(false);
   const CLICKS_REQUIRED = 9;
 
   const initWebGazer = async () => {
@@ -34,13 +34,12 @@ export function LiveTracking() {
     }
   };
 
-  // Safe state update for the AuthProvider
   useEffect(() => {
     if (allPointsDone) {
       const wg = (window as any).webgazer;
       setIsCalibrating(false);
-      setIsCalibrated(true); // Now safe to update parent context
-      setAllPointsDone(false); // Reset trigger
+      setIsCalibrated(true);
+      setAllPointsDone(false);
       
       if (wg) {
         wg.showPredictionPoints(false);
@@ -90,8 +89,7 @@ export function LiveTracking() {
       const newCounts = { ...prev, [index]: (prev[index] || 0) + 1 };
       
       const completedPoints = Object.values(newCounts).filter(count => count >= CLICKS_REQUIRED).length;
-      
-      // If all 9 points are done, trigger the useEffect
+
       if (completedPoints === CALIBRATION_POINTS.length) {
         setAllPointsDone(true);
 
@@ -162,7 +160,6 @@ export function LiveTracking() {
             const clicks = clickCounts[index] || 0;
             const isDone = clicks >= CLICKS_REQUIRED;
 
-            // 1. Check how many peripheral dots (not index 4) are finished
             const peripheralDoneCount = CALIBRATION_POINTS.reduce((acc, _, i) => {
               if (i !== 4 && (clickCounts[i] || 0) >= CLICKS_REQUIRED) {
                 return acc + 1;
@@ -170,7 +167,6 @@ export function LiveTracking() {
               return acc;
             }, 0);
 
-            // 2. Condition: If it's the middle dot, only show if others are all done (8)
             const isMiddleDot = index === 4;
             const shouldShow = !isMiddleDot || peripheralDoneCount === 8;
 

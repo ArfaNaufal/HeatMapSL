@@ -10,13 +10,11 @@ import { AdminRoute } from '@/app/components/AdminRoute';
 import { AdminPanel } from '@/app/components/AdminPanel';
 import { useAuth } from '@/app/components/AuthContext';
 
-// 1. Create a "HomeRedirect" component
 const HomeRedirect = () => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) return null;
 
-  // If Admin, send to Admin Panel. Otherwise, send to Live Tracking.
   return user?.role == 2  
     ? <Navigate to="/admin" replace /> 
     : <Navigate to="/live-tracking" replace />;

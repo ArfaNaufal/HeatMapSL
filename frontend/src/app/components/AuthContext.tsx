@@ -29,7 +29,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const decodeToken = (token: string) => {
   try {
-    // A JWT has 3 parts separated by dots. The 2nd part [1] is the data.
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(
@@ -47,19 +46,16 @@ const decodeToken = (token: string) => {
 
 const shutdownWebGazer = async () => {
   if (typeof window !== 'undefined' && window.webgazer) {
-    // 1. Stop WebGazer's internal logic
     window.webgazer.end();
     
-    // 2. Manually stop the webcam tracks (This turns off the LED light)
     const video = document.getElementById('webgazerVideoFeed') as HTMLMediaElement;
     if (video && video.srcObject) {
       const stream = video.srcObject as MediaStream;
       const tracks = stream.getTracks();
-      tracks.forEach(track => track.stop()); // The "Kill" command for the hardware
+      tracks.forEach(track => track.stop());
       video.srcObject = null;
     }
 
-    // 3. Remove the elements WebGazer injected into your HTML
     const webgazerElements = [
       'webgazerVideoFeed',
       'webgazerVideoCanvas',
@@ -88,13 +84,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (token) {
         try {
-          // 1. Call a dedicated 'verify' or 'me' endpoint on your backend
           const response = await fetch(`${import.meta.env.VITE_API_URL}/verify-token`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
 
           if (response.ok) {
-            // 2. Token is still valid on backend
             const payload = decodeToken(token);
             setIsAuthenticated(true);
             setUser({
@@ -104,7 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               role: payload.role
             });
           } else {
-            // 3. Token expired or invalid
             logout(); 
           }
         } catch (error) {

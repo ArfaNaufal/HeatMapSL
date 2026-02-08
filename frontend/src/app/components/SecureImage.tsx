@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Skeleton } from '@/app/components/ui/skeleton'; // Or your custom loader
+import { Skeleton } from '@/app/components/ui/skeleton';
 import { ImageIcon } from 'lucide-react';
 
 interface SecureImageProps {

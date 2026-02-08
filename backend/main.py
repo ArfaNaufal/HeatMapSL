@@ -23,26 +23,21 @@ def save_heatmap_to_disk(user_id: int, base64_str: str, session_name: str) -> st
     Saves a base64 image to the disk in a user-specific folder.
     Returns the relative file path to be stored in the database.
     """
-    # 1. Ensure the user's directory exists
+
     user_dir = Config.STORAGE_BASE / f"user_{user_id}"
     user_dir.mkdir(parents=True, exist_ok=True)
 
-    # 2. Clean the base64 string (remove metadata header if present)
     if "," in base64_str:
         base64_str = base64_str.split(",")[1]
 
-    # 3. Create a unique, non-guessable filename
-    # We use UUID to prevent people from guessing filenames
     unique_id = uuid.uuid4().hex
     filename = f"{unique_id}_{session_name.replace(' ', '_')}.png"
     file_path = user_dir / filename
 
-    # 4. Decode and write the bytes to disk
     img_data = base64.b64decode(base64_str)
     with open(file_path, "wb") as f:
         f.write(img_data)
 
-    # Return the string version of the path for the SQLite database
     return str(file_path)
 
 def delete_heatmap_from_disk(file_path: str) -> bool:
@@ -77,7 +72,7 @@ def create_dummy():
         admin_user = UserCreate(
             email=Config.DB_USER,
             password=Config.DB_PASSWORD,
-            role=2  # Assuming 2 is Admin role
+            role=2
         )
         hashed_password = authService.hash_password(admin_user.password)
         admin_user.password = hashed_password
@@ -88,7 +83,7 @@ def create_dummy():
         normal_user = UserCreate(
             email='dummy@heatmap.id',
             password='dummy',
-            role=1  # Assuming 1 is normal user role
+            role=1
         )
         hashed_password = authService.hash_password(normal_user.password)
         normal_user.password = hashed_password
@@ -96,7 +91,7 @@ def create_dummy():
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
     payload = authService.decode_token(token)
-    if payload["role"] != 1:  # Assuming 1 is User
+    if payload["role"] != 1:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Please use user account to use heatmap features."
@@ -165,7 +160,6 @@ def upload_heatmap(data: HeatmapUpload, token: str = Depends(oauth2_scheme)):
 
         file_path = save_heatmap_to_disk(data.user_id, heatmap_img, data.name)
         
-        # Save to database logic...
         img_id = db.addHeatmap(data.name, file_path, data.user_id)
         return {"status": "success", "point_count": len_point, "session_id": img_id}
     except Exception as e:
@@ -233,5 +227,4 @@ def verify_token(token: str = Depends(oauth2_scheme)):
 
 if __name__ == "__main__":
     import uvicorn
-    # This is the line that actually "mounts" it to port 8000
     uvicorn.run(app, host=Config.DB_HOST, port=int(Config.DB_PORT))
