@@ -42,6 +42,13 @@ Use this workflow for active coding. It provides **Hot Reloading** and uses the 
 - **Python (3.9+)**
 
 ### Step 1: Backend Setup
+0. Git clone latest main version repo.
+```bash
+git clone https://github.com/Eyapa/EyGazeHeatmap_Frontend_V1 .
+```
+
+
+
 1. Navigate to the backend folder:
 ```bash
 cd backend
