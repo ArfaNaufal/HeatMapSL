@@ -1,7 +1,8 @@
 # --- SYSTEM & IDE ---
 .DS_Store
 Thumbs.db
-.vscode/
+.vscode
+.vscode/*
 .idea/
 *.swp
 
