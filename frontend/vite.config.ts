@@ -13,18 +13,10 @@ export default defineConfig(( { mode } ) => {
       tailwindcss(),
       basicSsl(),
     ],
-    
     server: {
       port: 3000,
       https: true,
       host: true,
-      proxy: {
-        '/api': {
-          target: 'http://127.0.0.1:8000', // Use IP instead of localhost
-          changeOrigin: true,
-          secure: false,
-        }
-      },
     },
     resolve: {
       alias: {
