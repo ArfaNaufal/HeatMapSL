@@ -1,0 +1,25 @@
+services:
+  backend:
+    build: ./backend
+    # You can name the container so it's always 'backend' for Nginx
+    container_name: backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/db:/app/db
+      - ./backend/data/heatmap_storage:/app/data/heatmap_storage
+      - ./backend/log.txt:/app/log.txt
+    env_file:
+      - ./.env
+    environment:
+      - DATABASE_URL=sqlite:///./db/database.db
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro

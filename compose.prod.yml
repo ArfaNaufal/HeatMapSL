@@ -1,0 +1,17 @@
+services:
+  backend:
+    image: ghcr.io/eyapa/eygazeheatmap_backend_v1:latest
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./.env
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/db:/app/db
+
+  frontend:
+    image: ghcr.io/eyapa/eygazeheatmap_frontend_v1:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro

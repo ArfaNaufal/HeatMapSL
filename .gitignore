@@ -1,0 +1,54 @@
+# --- SYSTEM & IDE ---
+.DS_Store
+Thumbs.db
+.vscode
+.vscode/*
+.idea/
+*.swp
+
+# Python/Backend
+backend/__pycache__/
+backend/*.py[cod]
+backend/.venv/
+backend/.env
+backend/services/__pycache__/
+backend/services/*.py[cod]
+backend/database.db
+backend/log.txt
+
+# Ignore the SQLite database and its temporary "journal" files
+backend/*.db
+backend/*.db-journal
+backend/*.db-shm
+backend/*.db-wal
+
+# Data Storage (The most important ignore)
+# We ignore the content but keep the folder
+backend/data/heatmap_storage/**/*
+
+# Node/Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr
+frontend/*.local
+frontend/.env
+frontend/.env.*
+frontend/.DS_Store
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/public/images/*
+
+# --- DOCKER ---
+.docker/
+
+# --- GITHUB ---
+.github
+.github/*
+.github/*/*
+
+.Dockerignore
+compose.private.yml
+
+# --- OTHERS ---
+#*.dev.*
