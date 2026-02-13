@@ -155,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem('access_token');
     localStorage.removeItem('isCalibrated');
+    window.location.assign('/login');
   };
 
   return (
