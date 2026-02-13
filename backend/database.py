@@ -33,8 +33,19 @@ class Database():
                 img_name TEXT NOT NULL,
                 image_path TEXT NOT NULL,
                 user_id INTEGER NOT NULL,
+                model_id INTEGER NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES Users (id) ON DELETE CASCADE
+            )
+        """)
+
+        self._connect.execute("""
+            CREATE TABLE IF NOT EXISTS Models (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                model_name TEXT NOT NULL,
+                model_path TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
 
@@ -60,6 +71,7 @@ class Database():
                     query = query.replace('?', strvar if len(strvar) < 128 else strvar[:32] + "..." + strvar[-32:], 1)
                 Config.log(f"Sucessfully execute query ({query})", "QUERYSUCCESS")
             except sql.Error as e:
+                print(e)
                 con.rollback()
                 con.close()
                 raise e
@@ -93,11 +105,69 @@ class Database():
             Config.log(f"There is error when trying to find User ({email})", "QUERYERROR")
         return None
     
-    
-    def addHeatmap(self, img_name:str, image_path:str, user_id:int )->int|None:
-        query = "INSERT INTO Heatmaps (img_name, image_path, user_id) VALUES (?, ?, ?)"
+    def addImageModel(self, model_name:str, model_path:str, user_id:int )->int|None:
+        query = "INSERT INTO Models (model_name, model_path, user_id) VALUES (?, ?, ?)"
         try:
-            cursor:sql.Cursor = self.queryExecution(query, (img_name, image_path, user_id))
+            cursor:sql.Cursor = self.queryExecution(query, (model_name, model_path, user_id))
+            return cursor.lastrowid
+        except sql.Error as e:
+            print(e)
+            Config.log(f"There is error when trying to add ImageModel ({model_name})", "QUERYERROR")
+        return None
+    
+    def delImageModel(self, id:int)->int|None:
+        query = "DELETE FROM Models WHERE id = ?"
+        try:
+            cursor:sql.Cursor = self.queryExecution(query, (id,))
+            return cursor.rowcount
+        except sql.Error as e:
+            Config.log(f"There is error when trying to delete ImageModel ({id})", "QUERYERROR")
+        return None
+    
+    def findImageModel(self, id: int)->pd.DataFrame:
+        query = "SELECT * FROM Models WHERE id = ?"
+        try:
+            cursor:sql.Cursor = self.queryExecution(query, (id,))
+            data:pd.DataFrame = self._returnDataframe(cursor)
+            return data
+        except sql.Error as e:
+            Config.log(f"There is error when trying to find ImageModel ({id})", "QUERYERROR")
+        return None
+    
+    def findImageModelByName(self, model_name: str)->pd.DataFrame:
+        query = "SELECT * FROM Models WHERE model_name = ?"
+        try:
+            cursor:sql.Cursor = self.queryExecution(query, (model_name,))
+            data:pd.DataFrame = self._returnDataframe(cursor)
+            return data
+        except sql.Error as e:
+            Config.log(f"There is error when trying to check ImageModel exists ({model_name})", "QUERYERROR")
+        return None
+    
+    def findImageModelByUserID(self, id: int)->pd.DataFrame:
+        query = "SELECT * FROM Models WHERE user_id = ?"
+        try:
+            cursor:sql.Cursor = self.queryExecution(query, (id,))
+            data:pd.DataFrame = self._returnDataframe(cursor)
+            return data
+        except sql.Error as e:
+            Config.log(f"There is error when trying to find ImageModel ({id})", "QUERYERROR")
+        return None
+
+    def getAllImageModels(self)->pd.DataFrame:
+        query = "SELECT * FROM Models"
+        try:
+            cursor:sql.Cursor = self.queryExecution(query)
+            data:pd.DataFrame = self._returnDataframe(cursor)
+            return data
+        except sql.Error as e:
+            Config.log(f"There is error when trying to get all ImageModels", "QUERYERROR")
+        return None
+
+    def addHeatmap(self, img_name:str, image_path:str, model_id: int, user_id:int )->int|None:
+        query = "INSERT INTO Heatmaps (img_name, image_path, model_id, user_id) VALUES (?, ?, ?, ?)"
+        try:
+            cursor:sql.Cursor = self.queryExecution(query, (img_name, image_path, model_id, user_id))
             return cursor.lastrowid
         except sql.Error as e:
             Config.log(f"There is error when trying to add Heatmap ({img_name})", "QUERYERROR")

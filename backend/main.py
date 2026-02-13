@@ -6,7 +6,7 @@ from database import Database
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from models import UserLogin, UserCreate, HeatmapUpload
+from models import Image_ModelUpload, UserLogin, UserCreate, HeatmapUpload
 from services.auth_service import authService, oauth2_scheme
 from contextlib import asynccontextmanager
 from services.heatpmap_service import heatmap_service
@@ -18,13 +18,51 @@ import cv2
 
 db:Database = Database()
 
+def save_model_to_disk(base64_str: str, model_name: str) -> str:
+    """
+    Saves a base64 model file to the disk in the model folder.
+    Returns the relative file path to be stored in the database.
+    """
+
+    model_dir = Config.MODEL_PATH
+    model_dir.mkdir(parents=True, exist_ok=True)
+
+    if "," in base64_str:
+        base64_str = base64_str.split(",")[1]
+
+    unique_id = uuid.uuid4().hex
+    filename = f"{unique_id}_{model_name.replace(' ', '_')}.png"
+    file_path = model_dir / filename
+
+    model_data = base64.b64decode(base64_str)
+    with open(file_path, "wb") as f:
+        f.write(model_data)
+
+    return str(file_path)
+
+def delete_model_from_disk(file_path: str) -> bool:
+    """
+    Deletes the model file from disk.
+    Returns True if deletion was successful, False otherwise.
+    """
+    try:
+        path = Path(file_path)
+        if path.exists():
+            path.unlink()
+            return True
+        else:
+            return False
+    except Exception as e:
+        Config.log(f"Error deleting file {file_path}: {e}", "FILEDELETEERROR")
+        return False
+
 def save_heatmap_to_disk(user_id: int, base64_str: str, session_name: str) -> str:
     """
     Saves a base64 image to the disk in a user-specific folder.
     Returns the relative file path to be stored in the database.
     """
 
-    user_dir = Config.STORAGE_BASE / f"user_{user_id}"
+    user_dir = Config.HEATMAP_PATH / f"user_{user_id}"
     user_dir.mkdir(parents=True, exist_ok=True)
 
     if "," in base64_str:
@@ -141,6 +179,67 @@ def register(usercreate: UserCreate, admin: dict = Depends(get_current_admin)):
         raise HTTPException(status_code=400, detail="User registration failed")
     return {"message": "User registered successfully"}
 
+@app.post('/api/model/upload')
+def upload_model(data: Image_ModelUpload, user_data: str = Depends(get_current_admin)):
+    
+    try:
+        pixel_matrix = decode_base64_to_cv2(data.base64_image)
+    
+        if pixel_matrix is None:
+            raise HTTPException(status_code=400, detail="Invalid image data")
+
+        file_path = save_model_to_disk(data.base64_image, data.model_name)
+        model_id = db.addImageModel(data.model_name, file_path, user_data["id"])
+        return {"status": "success", "model_id": model_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get('/api/model/file/{model_id}')
+async def get_model_file(model_id: int, token: str = Depends(oauth2_scheme)):
+    authService.decode_token(token)
+    row = db.findImageModel(model_id)[["model_path"]]
+
+    if row.size == 0:
+        raise HTTPException(status_code=404, detail="Model not found")
+    
+    file_path = row.loc[0].values[0]
+
+    return FileResponse(file_path)
+
+@app.get('/api/model/all')
+def get_all_models(user_data: str = Depends(oauth2_scheme)):
+    models = db.getAllImageModels()[['id', 'model_name', 'created_at', 'user_id']]
+    return models.to_dict(orient='records')
+
+@app.delete('/api/model/delete/{model_id}')
+def delete_model_by_id(model_id: int, user_data: str = Depends(get_current_admin)):
+    result = db.findImageModel(model_id)[["model_path", "user_id"]]
+    
+    if result.size == 0:
+        raise HTTPException(status_code=404, detail="Model not found")
+    
+    model_path, user_id = result.loc[0].values
+
+    if (int(user_id) != user_data["id"]) and user_data["role"] != 2:
+        raise HTTPException(status_code=403, detail="Unauthorized access to this data")
+
+    delete_success = delete_model_from_disk(model_path)
+    if delete_success :
+        deleted_rows = db.delImageModel(model_id)
+        if deleted_rows and deleted_rows > 0:
+            return {"status": "deleted"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to delete model from database")
+    else:
+        raise HTTPException(status_code=500, detail="Failed to delete model file from disk")
+    
+@app.get('/api/model/check/{img_name}')
+def check_heatmaps_by_user(img_name:str, token: str = Depends(oauth2_scheme)):
+    authService.decode_token(token)
+    
+    heatmaps: pd.DataFrame = db.findImageModelByName(img_name)[['id', 'model_name', 'created_at']]
+    return {"status": img_name in heatmaps["model_name"].values}
+
 @app.post('/api/heatmap/upload')
 def upload_heatmap(data: HeatmapUpload, token: str = Depends(oauth2_scheme)):
     authService.decode_token(token)
@@ -148,21 +247,29 @@ def upload_heatmap(data: HeatmapUpload, token: str = Depends(oauth2_scheme)):
     try:
         formatted_points = [[p.x, p.y, 1] for p in data.points]
         len_point = len(formatted_points)
-        pixel_matrix = decode_base64_to_cv2(data.base64_image)
-    
-        if pixel_matrix is None:
+        print("Test1")
+        model_path = db.findImageModel(data.model_id)[["model_path"]].loc[0].values[0]
+        if not model_path:
+            raise HTTPException(status_code=404, detail="Model not found")
+        print("Test2")
+        model_data = cv2.imread(Path(model_path), cv2.IMREAD_COLOR)
+        print("Test3")
+        if model_data is None:
             raise HTTPException(status_code=400, detail="Invalid image data")
+        print("Test4")
         heatmap_img = heatmap_service.create_heatmap(
             gazepoints=formatted_points,
             dispsize=(data.width, data.height),
-            background_img=pixel_matrix
+            background_img=model_data
         )
-
+        print("Test5")
         file_path = save_heatmap_to_disk(data.user_id, heatmap_img, data.name)
-        
-        img_id = db.addHeatmap(data.name, file_path, data.user_id)
+        print("Test6")
+        img_id = db.addHeatmap(data.name, file_path, data.model_id, data.user_id)
+        print("Test7")
         return {"status": "success", "point_count": len_point, "session_id": img_id}
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=str(e))
     
 @app.get('/api/heatmap/get_by_user/{user_id}')
@@ -189,11 +296,10 @@ def delete_heatmap_by_sessionid(session_id: int, token: str = Depends(oauth2_sch
     if result.size == 0:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    image_path, user_id = db.findHeatmap(session_id)[["image_path", "user_id"]].loc[0].values
+    image_path, user_id = result.loc[0].values
 
     if (int(user_id) != user_data["id"]) and user_data["role"] != 2:
         raise HTTPException(status_code=403, detail="Unauthorized access to this data")
-    print(image_path, user_id)
 
     delete_success = delete_heatmap_from_disk(image_path)
     if delete_success :
@@ -206,7 +312,7 @@ def delete_heatmap_by_sessionid(session_id: int, token: str = Depends(oauth2_sch
         raise HTTPException(status_code=500, detail="Failed to delete heatmap file from disk")
 
 @app.get("/api/heatmaps/file/{session_id}")
-async def get_secure_file(session_id: int, token: str = Depends(oauth2_scheme)):
+async def get_heatmap_file(session_id: int, token: str = Depends(oauth2_scheme)):
     user_data = authService.decode_token(token)
     row = db.findHeatmap(session_id)[["image_path", "user_id"]].loc[0].values
 

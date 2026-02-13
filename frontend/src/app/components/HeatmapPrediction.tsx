@@ -1,26 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
-import { Play, Upload, Trash2, ImageIcon, Tag, Clock, Table as TableIcon, Eye } from 'lucide-react';
+import { Play, Upload, Trash2, ImageIcon, Tag, Clock, Table as TableIcon, Eye, LoaderIcon } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card } from '@/app/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator as Separator } from '@/app/components/ui/select';
 import { Input } from '@/app/components/ui/input';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
-import { SecureImage } from './SecureImage';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { SecureHeatmap, SecureImageModel } from './SecureImage';
+import { useNavigate } from 'react-router-dom';
 import { API_URL } from '@/app/App';
 
 interface HeatmapSession {
   id: number;
   img_name: string;
   created_at: string;
-  user_id: number;
-  base64_data: string;
 }
 
 export function HeatmapPrediction() {
   const { isCalibrated, user } = useAuth();
   const [sessionName, setSessionName] = useState("");
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [selectValue, setSelectValue] = useState<string>("none");
+  const [availableImages, setAvailableImages] = useState<{
+    id: number; model_name: string
+}[]>([]);
+  const [isLoadingImages, setIsLoadingImages] = useState(false);
+  const [selectImageId, setSelectImageId] = useState<number | null>(null);
   const navigate = useNavigate();
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -102,9 +106,40 @@ export function HeatmapPrediction() {
     }
   };
 
+  const fetchAvailableImages = async () => {
+    setIsLoadingImages(true);
+    try {
+      const response = await fetch(`${API_URL}/model/all`, { // Adjust to your actual endpoint
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}` 
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableImages(data);
+      }
+    } catch (err) {
+      toast.error("Failed to load stimulus library.");
+    } finally {
+      setIsLoadingImages(false);
+    }
+  };
+
   useEffect(() => {
+    fetchAvailableImages();
     fetchSessions();
   }, []);
+
+  const handleSelectStimulus = (value: string) => {
+    setSelectValue(value);
+    if (value === "none") {
+      setSelectImageId(null);
+      return;
+    }
+    const model_id = Number(value);
+    setSelectImageId(model_id); 
+
+  };
 
   const checkSession = async (img_name:string) => {
     try {
@@ -175,14 +210,13 @@ export function HeatmapPrediction() {
 
     const { naturalWidth, naturalHeight } = imageRef.current;
 
-
     const payload = {
       name: sessionName,
       user_id: user?.id,
+      model_id: selectImageId,
       width: naturalWidth,
       height: naturalHeight,
-      points: gazeHistory.current,
-      base64_image: uploadedImage 
+      points: gazeHistory.current
     };
 
     toast.promise(
@@ -198,6 +232,7 @@ export function HeatmapPrediction() {
         loading: 'Saving gaze data...',
         success: ()=>{
           fetchSessions();
+          fetchAvailableImages();
           return 'Session saved successfully!'
         },
         error: 'Failed to save session data.'
@@ -255,12 +290,11 @@ export function HeatmapPrediction() {
 
             {/* PHASE 2: THE IMAGE (FULLSCREEN) */}
             <div className="relative w-screen h-screen flex items-center justify-center bg-black">
-              <img 
-                ref={imageRef} 
-                src={uploadedImage!} 
-                alt="Stimuli" 
-                className="w-full h-full object-contain"
-              />
+              <SecureImageModel
+                modelId={selectImageId!}
+                ref={imageRef}
+                className="w-full h-full object-cover opacity-50"
+              ></SecureImageModel>
 
               {/* THE COUNTDOWN INDICATOR (Bottom of Container) */}
               <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center space-y-2 pointer-events-none">
@@ -295,7 +329,7 @@ export function HeatmapPrediction() {
             tabIndex={0}
             ref={viewModalRef}
             >
-              <SecureImage 
+              <SecureHeatmap 
                 sessionId={viewHeatmapSessionId!} 
                 className="w-full h-full object-cover opacity-80" 
               />
@@ -311,72 +345,79 @@ export function HeatmapPrediction() {
       </>
 
       <div className="space-y-6">
-        {/* DASHBOARD UI */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl text-white font-bold">Heatmap Prediction</h2>
-          {uploadedImage && <Button onClick={() => setUploadedImage(null)} variant="ghost" className="text-red-400"><Trash2 className="w-4 h-4 mr-2" /> Reset Image</Button>}
-        </div>
-
+        {/* Select Model section*/}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 bg-white/5 border-white/10 p-10 flex flex-col items-center justify-center min-h-[400px]">
-            {!uploadedImage ? (
-              <div className="text-center">
-                <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Upload className="w-10 h-10 text-cyan-500" />
-                </div>
-                <h3 className="text-xl text-white font-bold mb-2">Upload Stimuli</h3>
-                <p className="text-gray-500 mb-8 max-w-xs mx-auto">Upload the image or UI mockup you want to analyze.</p>
-                <label className="bg-cyan-500 hover:bg-cyan-600 text-white px-8 py-3 rounded-xl cursor-pointer transition-all shadow-lg shadow-cyan-500/20">
-                  Choose File
-                  <input type="file" className="hidden" onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-
-                      if (!file.type.startsWith('image/')) {
-                        toast.error("Invalid file type. Please upload an image (PNG, JPG, etc.).");
-                        e.target.value = "";
-                        return;
-                      }
-
-                      if (file.size > 10 * 1024 * 1024) {
-                        toast.error("File is too large. Please upload an image under 10MB.");
-                        return;
-                      }
-
-                      const reader = new FileReader();
-                      reader.onload = () => setUploadedImage(reader.result as string);
-                      reader.readAsDataURL(file);
-                    }
-                  }} 
-                  accept="image/png, image/jpeg, image/jpg, image/webp"
-                  />
-                </label>
-              </div>
-            ) : (
-              <div className="w-full space-y-6">
-                <div className="relative aspect-video rounded-xl overflow-hidden border border-white/10">
-                  <img src={uploadedImage} className="w-full h-full object-cover opacity-50 grayscale" alt="Preview" />
+            <div className="w-full space-y-6">
+              <div className="relative aspect-video rounded-xl overflow-hidden border border-white/10">
+                {!selectImageId ? (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <ImageIcon className="w-12 h-12 text-white/20" />
+                    <div className="text-center">
+                      <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <LoaderIcon className="w-10 h-10 text-cyan-500" />
+                      </div>
+                      <h3 className="text-xl text-white font-bold mb-2">Select Stimuli</h3>
+                      <p className="text-gray-500 mb-8 max-w-xs mx-auto">Select the image you want to analyze.</p>
+                    </div>
                   </div>
-                </div>
+                )
+                : (
+                  <>
+                    <SecureImageModel
+                      modelId={selectImageId!}
+                      className="w-full h-full object-cover opacity-50 grayscale"
+                    ></SecureImageModel>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <ImageIcon className="w-12 h-12 text-white/20" />
+                    </div>
+                  </>
+              )}
+              </div>
+              <div className="w-full space-y-4">
+                <h3 className="text-lg text-white font-medium">Select Model from Library</h3>
                 
+                <Select value={selectValue} onValueChange={handleSelectStimulus} disabled={isLoadingImages}>
+                  <SelectTrigger className="w-full h-12 bg-white/5 border-white/10 text-white rounded-xl">
+                    <SelectValue placeholder={isLoadingImages ? "Loading images..." : "Select an image"} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-white/10 text-white">
+                    <SelectItem value="none" className="text-white focus:bg-cyan-500/20 ">
+                      <div className="p-2 text-sm text-white text-center">None / Clear Selection</div>
+                    </SelectItem>
+                    
+                    <Separator className="my-1 bg-white/10" />
+                    {availableImages.map((img) => (
+                      <SelectItem key={img.id} value={String(img.id)} className="focus:bg-cyan-500/20 text-white">
+                        <div className="p-2 text-sm text-white text-center">{img.model_name}</div>
+                      </SelectItem>
+                    ))}
+                    {availableImages.length === 0 && !isLoadingImages && (
+                      <div className="p-2 text-sm text-gray-500 text-center">No images found in library</div>
+                    )}
+                  </SelectContent>
+                </Select>
+
+              </div>
+              {selectImageId && (
                 <div className="space-y-4">
-                  <div className="relative">
-                    <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                    <Input 
-                      placeholder="Session Name (e.g. Amazon Hero Banner)" 
-                      className="pl-12 bg-white/5 border-white/10 h-14 text-white rounded-xl"
-                      value={sessionName}
-                      onChange={(e) => setSessionName(e.target.value)}
-                    />
+                  <div className="space-y-4">
+                    <h3 className="text-lg text-white font-medium">Input Session Name</h3>
+                    <div className="relative">
+                      <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                      <Input 
+                        placeholder="Session Name (e.g. Amazon Hero Banner)" 
+                        className="pl-12 bg-white/5 border-white/10 h-12   text-white rounded-xl"
+                        value={sessionName}
+                        onChange={(e) => setSessionName(e.target.value)}
+                      />
+                    </div>
                   </div>
                   <Button onClick={startAnalysisSession} size="lg" className="w-full h-14 bg-cyan-500 hover:bg-cyan-600 text-white text-lg font-bold rounded-xl">
                     <Play className="w-5 h-5 mr-2" /> Launch Analysis
                   </Button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </Card>
 
           {/* Info Sidebar */}
@@ -418,7 +459,7 @@ export function HeatmapPrediction() {
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-3">
                             <div className="w-12 h-8 bg-slate-800 rounded border border-white/10 overflow-hidden">
-                              <SecureImage 
+                              <SecureHeatmap 
                                   sessionId={session.id} 
                                   className="w-full h-full object-cover opacity-80" 
                                 />

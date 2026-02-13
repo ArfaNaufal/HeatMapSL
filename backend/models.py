@@ -20,7 +20,7 @@ class GazePoint(BaseModel):
 
 class HeatmapUpload(BaseModel):
     name: str
-    base64_image: str
+    model_id: int
     user_id: int
     width: int
     height: int
@@ -32,7 +32,23 @@ class HeatmapGet(BaseModel):
     name: str
     created_at: datetime 
     gaze_points_count: int
+    model_id: int
     image_path: str
+    
+    class Config:
+        from_attributes = True
+
+# 4. For Model Management
+class Image_ModelUpload(BaseModel):
+    model_name: str
+    base64_image: str
+
+class Image_ModelGet(BaseModel):
+    id: int
+    model_name: str
+    model_path: str
+    user_id: int
+    created_at: datetime
     
     class Config:
         from_attributes = True

@@ -1,0 +1,33 @@
+# --- 1. Heavy Folders (Crucial for build speed) ---
+**/node_modules/
+**/.venv/
+**/.git/
+**/dist/
+**/__pycache__/
+
+# --- 2. Local Data (Prevent overwriting container data) ---
+# You don't want your local DB or images being baked into the image
+# because you will mount these as Volumes instead.
+backend/*.db
+backend/*.db-journal
+backend/data/heatmap_storage/
+backend/data/models/
+backend/log.txt
+
+# --- 3. Local Configs ---
+**/.env
+**/.env.*
+**/.vscode/
+**/.idea/
+frontend/public/images/*
+
+# --- 4. Docker Files ---
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# --- GITHUB ---
+.github
+.github/*
+.github/*/*
+.gitignore

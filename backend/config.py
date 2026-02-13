@@ -43,9 +43,10 @@ class Message ():
 
 class Setting():
     PROJECT_NAME: str = 'EyeGaze_Backend'
-    JWT_TOKEN: str = os.getenv('JWT_TOKEN', '')
+    JWT_TOKEN: str = str(os.getenv('JWT_TOKEN', ''))
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES', 30))
-    STORAGE_BASE: Path = Path(os.getenv("STORAGE_BASE", "data/heatmap_storage"))
+    HEATMAP_PATH: Path = Path(os.getenv("HEATMAP_PATH", "data/heatmap_storage"))
+    MODEL_PATH = Path(os.getenv("MODEL_PATH", "data/models"))
     ALGORITHM: str = os.getenv('ALGORITHM', 'HS256')
     DB_HOST: str = os.getenv('DB_HOST', 'localhost')
     DB_PATH: str = os.getenv('DB_PATH', 'database.db')

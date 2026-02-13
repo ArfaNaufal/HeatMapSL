@@ -26,7 +26,8 @@ async def get_dashboard_data(admin = Depends(get_current_admin)):
     try:
         stats = {
             "users": int(db_admin._returnDataframe(db_admin.queryExecution("SELECT COUNT(*) FROM Users")).iloc[0,0]),
-            "heatmaps": int(db_admin._returnDataframe(db_admin.queryExecution("SELECT COUNT(*) FROM Heatmaps")).iloc[0,0])
+            "heatmaps": int(db_admin._returnDataframe(db_admin.queryExecution("SELECT COUNT(*) FROM Heatmaps")).iloc[0,0]),
+            "models": int(db_admin._returnDataframe(db_admin.queryExecution("SELECT COUNT(*) FROM Models")).iloc[0,0])
         }
 
         users = db_admin._returnDataframe(db_admin.queryExecution("""
@@ -40,16 +41,22 @@ async def get_dashboard_data(admin = Depends(get_current_admin)):
             SELECT h.id, h.img_name as name, h.created_at, u.email as owner 
             FROM Heatmaps h JOIN Users u ON h.user_id = u.id
         """)).to_dict(orient='records')
+
+        models = db_admin._returnDataframe(db_admin.queryExecution("""
+            SELECT m.id, m.model_name, m.created_at, u.email as owner 
+            FROM Models m JOIN Users u ON m.user_id = u.id
+        """)).to_dict(orient='records')
+
     except sqlite3.Error as e:
         raise HTTPException(status_code=500, detail="Database query failed")
     
-    return {"stats": stats, "users": users, "heatmaps": heatmaps}
+    return {"stats": stats, "users": users, "heatmaps": heatmaps, "models": models}
 
 @router.get("/logs", response_class=PlainTextResponse)
 async def get_logs(admin = Depends(get_current_admin)):
     log_path = Path("log.txt")
     if not log_path.exists():
-        return HTTPException(status_code=404, detail="Log file not found")
+        raise HTTPException(status_code=404, detail="Log file not found")
     with open(log_path, "r") as f:
         return "".join(f.readlines()[-300:])
 
