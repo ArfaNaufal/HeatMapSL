@@ -71,7 +71,6 @@ class Database():
                     query = query.replace('?', strvar if len(strvar) < 128 else strvar[:32] + "..." + strvar[-32:], 1)
                 Config.log(f"Sucessfully execute query ({query})", "QUERYSUCCESS")
             except sql.Error as e:
-                print(e)
                 con.rollback()
                 con.close()
                 raise e
@@ -111,7 +110,6 @@ class Database():
             cursor:sql.Cursor = self.queryExecution(query, (model_name, model_path, user_id))
             return cursor.lastrowid
         except sql.Error as e:
-            print(e)
             Config.log(f"There is error when trying to add ImageModel ({model_name})", "QUERYERROR")
         return None
     
