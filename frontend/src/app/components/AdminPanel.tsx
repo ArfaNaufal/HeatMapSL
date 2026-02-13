@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Upload, Trash2, ImageIcon, Tag, Users, Image, Map, Terminal, Eye, RefreshCw, Activity, Plus } from 'lucide-react';
+import { * } from '@app/';
 import { Button } from '@/app/components/ui/button';
 import { Card } from '@/app/components/ui/card';
 import { Input } from '@/app/components/ui/input';
@@ -27,16 +28,16 @@ export function AdminPanel() {
         setIsLoading(true);
         const headers = { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` };
         try {
-        const [dbRes, logRes] = await Promise.all([
-            fetch(`${API_URL}/admin/dashboard-data`, { headers }),
-            fetch(`${API_URL}/admin/logs`, { headers })
-        ]);
-        if (dbRes.ok) setData(await dbRes.json());
-        if (logRes.ok) setLogs(await logRes.text());
+            const [dbRes, logRes] = await Promise.all([
+                fetch(`${API_URL}/admin/dashboard-data`, { headers }),
+                fetch(`${API_URL}/admin/logs`, { headers })
+            ]);
+            if (dbRes.ok) setData(await dbRes.json());
+            if (logRes.ok) setLogs(await logRes.text());
         } catch (err) {
-        toast.error("Failed to sync with server.");
+            toast.error("Failed to sync with server.");
         } finally {
-        setIsLoading(false);
+            setIsLoading(false);
         }
     };
 
@@ -49,7 +50,7 @@ export function AdminPanel() {
           });
           if (response.ok) {
             const data = await response.json();
-            return data.status
+            return data.status;
           }
         } catch (err) {
           return false
@@ -58,29 +59,29 @@ export function AdminPanel() {
 
     const handleDeleteSession = async (sessionId: number) => {
         toast.promise(
-        fetch(`${API_URL}/heatmap/delete/${sessionId}`, {
-            method: 'DELETE',
-            headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            fetch(`${API_URL}/heatmap/delete/${sessionId}`, {
+                method: 'DELETE',
+                headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            }),
+            {
+                loading: 'Deleting session...',
+                success: ()=>{
+                    fetchAdminData();
+                    sessionId === viewHeatmapSessionId && setIsShowViewHeatmap(false);
+                    setViewHeatmapSessionId(null);
+                    return 'Session deleted successfully!'
+                },
+                error: 'Failed to delete session.'
             }
-        }),
-        {
-            loading: 'Deleting session...',
-            success: ()=>{
-            fetchAdminData();
-            sessionId === viewHeatmapSessionId && setIsShowViewHeatmap(false);
-            setViewHeatmapSessionId(null);
-            return 'Session deleted successfully!'
-            },
-            error: 'Failed to delete session.'
-        }
-        )
-    }
+        );
+    };
 
     const handleAddUser = async (email: string, password: string, role: string) => {
         
-    }
+    };
 
     const savedImage = async () => {
         if (!uploadedImage) return toast.error("No image uploaded.");
@@ -102,27 +103,49 @@ export function AdminPanel() {
             {
                 loading: 'Saving image model...',
                 success: ()=>{
-                fetchAdminData();
-                return 'Model saved successfully!'
+                    fetchAdminData();
+                    return 'Model saved successfully!'
                 },
                 error: 'Failed to save model data.'
             }
         );
-    }
+    };
 
-    const handleDeleteModel = async (modelId: number) => {}
+    const handleDeleteModel = async (modelId: number) => {
+        await toast.promise(
+            fetch(`${API_URL}/model/delete/${modelId}`, {
+                method: 'DELETE',
+                headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            }),
+            {
+                loading: 'Deleting model...',
+                success: ()=>{
+                    fetchAdminData();
+                    modelId === viewModelId && setIsShowViewModel(false);
+                    setViewModelId(null);
+                    return 'Model deleted successfully!'
+                },
+                error: 'Failed to delete model.'
+            }
+        )
+    };
+
     const handleUploadModel = async () => {
         if ((await checkSession(modelName))) return toast.error("Model name already used.");
         if (!modelName) return toast.error("Please name the model first.");
 
         await savedImage()
-    }
+    };
+
     useEffect(() => {
         if (isShowViewHeatmap) {
-        document.body.style.overflow = 'hidden';
-        viewHeatmapModalRef.current?.focus();
+            document.body.style.overflow = 'hidden';
+            viewHeatmapModalRef.current?.focus();
         } else {
-        document.body.style.overflow = 'unset';
+            document.body.style.overflow = 'unset';
         }
     }, [isShowViewHeatmap]);
 

@@ -247,26 +247,26 @@ def upload_heatmap(data: HeatmapUpload, token: str = Depends(oauth2_scheme)):
     try:
         formatted_points = [[p.x, p.y, 1] for p in data.points]
         len_point = len(formatted_points)
-        print("Test1")
+
         model_path = db.findImageModel(data.model_id)[["model_path"]].loc[0].values[0]
         if not model_path:
             raise HTTPException(status_code=404, detail="Model not found")
-        print("Test2")
+
         model_data = cv2.imread(Path(model_path), cv2.IMREAD_COLOR)
-        print("Test3")
+
         if model_data is None:
             raise HTTPException(status_code=400, detail="Invalid image data")
-        print("Test4")
+
         heatmap_img = heatmap_service.create_heatmap(
             gazepoints=formatted_points,
             dispsize=(data.width, data.height),
             background_img=model_data
         )
-        print("Test5")
+
         file_path = save_heatmap_to_disk(data.user_id, heatmap_img, data.name)
-        print("Test6")
+
         img_id = db.addHeatmap(data.name, file_path, data.model_id, data.user_id)
-        print("Test7")
+
         return {"status": "success", "point_count": len_point, "session_id": img_id}
     except Exception as e:
         print(e)

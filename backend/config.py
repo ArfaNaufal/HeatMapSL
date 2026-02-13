@@ -29,7 +29,6 @@ class Message ():
             with open (self._basePath+'log.txt', "a") as op:
                 op.write(f'({dt.now().strftime("%Y-%m-%d|%I:%M:%S")}) {self}\n')
         except Exception as e:
-            print(e)
             return False
         return True
     
