@@ -132,7 +132,7 @@ def create_dummy():
         normal_user.password = hashed_password
         db.addUser(normal_user)
 
-async def request_limiter ( request: Request) -> bool|Response:
+async def request_limiter ( request: Request) -> bool:
     limit:str
     auth_header = request.headers.get("Authorization")
     ip = get_remote_address(request)
@@ -167,7 +167,7 @@ async def request_limiter ( request: Request) -> bool|Response:
 def check_authorization(request: Request) -> bool:
     rdict = {'status': False}
     auth_header = request.headers.get("Authorization")
-    if auth_header:
+    if auth_header and auth_header.split(" ")[1] != "null":
         try:
             rdict["payload"] = authService.decode_token(auth_header.split(" ")[1])
             rdict["status"] = True
@@ -241,7 +241,7 @@ def register(usercreate: UserCreate, authorize = Depends(check_authorization), _
         raise HTTPException(status_code=400, detail="User registration failed")
     
     if not authorize['status']:
-        db_user = db.findUser(UserCreate.email)
+        db_user = db.findUser(usercreate.email)
         token_data = {"sub": str(db_user["email"].loc[0]), "id": int(db_user["id"].loc[0]), "role": int(db_user["role"].loc[0])}
         token = authService.create_access_token(token_data)
         return {

@@ -21,9 +21,14 @@ interface ConfirmActionProps {
     variant?: "default" | "destructive";
 };
 
+interface UserData {
+    email: string;
+    password: string;
+}
+
 interface UserRegistrationDialogProps {
     trigger: React.ReactNode;
-    handleSuccess: ()=>void;
+    handleSuccess: (data: UserData)=>void;
 };
 
 export const ConfirmCancelDialog = ({
@@ -67,7 +72,7 @@ export const ConfirmCancelDialog = ({
 
 export const UserRegistrationDialog = ({
     trigger,
-    handleSuccess = () => {}    
+    handleSuccess = (data: UserData) => {}    
 }: UserRegistrationDialogProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [email, setEmail] = useState<string>("");
@@ -90,11 +95,19 @@ export const UserRegistrationDialog = ({
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                 },
                 body: JSON.stringify(payload)
+            }).then(async (response) => {
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to register new user account.');
+                }
+                return response.json();
             }),
             {
                 loading: 'Registering new user account...',
-                success: () => {
-                    handleSuccess();
+                success: (data) => {
+                    if (window.location.pathname === '/login' && data.access_token && data.token_type == "bearer")
+                        localStorage.setItem('access_token', data.access_token);
+                    handleSuccess(payload);
                     setEmail("");
                     setPassword("");
                     setIsOpen(false); 

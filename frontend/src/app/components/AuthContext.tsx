@@ -137,7 +137,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsAuthenticated(true);
           setUser(userData);
           setIsCalibrated(false);
-          localStorage.setItem('auth_user', JSON.stringify(userData));
           return userData;
         }
       }
@@ -150,12 +149,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     if (typeof window !== 'undefined' && window.webgazer) await shutdownWebGazer();
+    const tempUser = user;
     setIsAuthenticated(false);
     setIsCalibrated(false);
     setUser(null);
     localStorage.removeItem('access_token');
-    localStorage.removeItem('isCalibrated');
-    window.location.assign('/login');
+    if (tempUser?.role == 1) window.location.assign('/login');
   };
 
   return (
