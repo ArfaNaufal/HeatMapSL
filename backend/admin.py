@@ -16,7 +16,7 @@ def get_current_admin(token: str = Depends(oauth2_scheme)):
     if payload["role"] != 2:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can register new users"
+            detail="Only admins can access these apis."
         )
     return payload
 

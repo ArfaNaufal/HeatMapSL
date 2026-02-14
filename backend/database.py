@@ -85,13 +85,13 @@ class Database():
             Config.log(f"There is error when trying to add User ({user.email.__str__()}, {user.password}, {user.role})", "QUERYERROR")
         return None
 
-    def delUser(self, email:str)->int|None:
-        query = "DELETE FROM Users WHERE email LIKE ?"
+    def delUser(self, id:str)->int|None:
+        query = "DELETE FROM Users WHERE id = ?"
         try:
-            cursor:sql.Cursor = self.queryExecution(query, (email,))
+            cursor:sql.Cursor = self.queryExecution(query, (id,))
             return cursor.rowcount
         except sql.Error as e:
-            Config.log(f"There is error when trying to delete User ({email})", "QUERYERROR")
+            Config.log(f"There is error when trying to delete User ({id})", "QUERYERROR")
         return None
     
     def findUser(self, email: str)->pd.DataFrame:
@@ -102,6 +102,16 @@ class Database():
             return data
         except sql.Error as e:
             Config.log(f"There is error when trying to find User ({email})", "QUERYERROR")
+        return None
+    
+    def findUserById(self, id: int)->pd.DataFrame:
+        query = "SELECT * FROM Users WHERE id = ?"
+        try:
+            cursor:sql.Cursor = self.queryExecution(query, (id,))
+            data:pd.DataFrame = self._returnDataframe(cursor)
+            return data
+        except sql.Error as e:
+            Config.log(f"There is error when trying to find User ({id})", "QUERYERROR")
         return None
     
     def addImageModel(self, model_name:str, model_path:str, user_id:int )->int|None:

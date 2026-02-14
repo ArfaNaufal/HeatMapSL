@@ -6,6 +6,7 @@ import { Input } from '@/app/components/ui/input';
 import { toast } from 'sonner';
 import { SecureHeatmap, SecureImageModel } from './SecureImage';
 import { API_URL } from '@/app/App';
+import { UserRegistrationDialog } from '@/app/components/DialogModals';
 
 export function AdminPanel() {
     const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'models' | 'heatmaps' | 'logs'>('stats');
@@ -78,8 +79,24 @@ export function AdminPanel() {
         );
     };
 
-    const handleAddUser = async (email: string, password: string, role: string) => {
-        
+    const handleDeleteUser = async (userId: number) => {
+        await toast.promise(
+            fetch(`${API_URL}/user/delete/${userId}`, {
+                method: 'DELETE',
+                headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            }),
+            {
+                loading: 'Deleting user...',
+                success: ()=>{
+                    fetchAdminData();
+                    return 'User deleted successfully!'
+                },
+                error: 'Failed to delete user.'
+            }
+        );
     };
 
     const savedImage = async () => {
@@ -296,7 +313,7 @@ export function AdminPanel() {
                                     </td>
                                     <td className="px-6 py-4 font-mono text-gray-400">{u.sessions}</td>
                                     <td className="px-6 py-4 text-right">
-                                        <Button variant="ghost" className="text-red-400 opacity-45 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></Button>
+                                        <Button variant="ghost" className="text-red-400 opacity-45 group-hover:opacity-100" onClick={()=>handleDeleteUser(u.id)}><Trash2 className="w-4 h-4" /></Button>
                                     </td>
                                     </tr>
                                 ))}
@@ -305,13 +322,21 @@ export function AdminPanel() {
                         </Card>
                     
                         <div className="flex space-x-2 p-1.5 rounded-2xl w-fit">
-                            <Button
-                                onClick={() => {setIsShowAddUserModal(true)}}
-                                variant="outline" 
-                                className="bg-white/5 border-white/10 text-cyan-400"
-                            >
-                                <Plus className="w-4 h-4 mr-2" /> Add User
-                            </Button>
+                            <UserRegistrationDialog
+                                trigger={
+                                    <Button
+                                        onClick={() => {setIsShowAddUserModal(true)}}
+                                        variant="outline" 
+                                        className="bg-white/5 border-white/10 text-cyan-400"
+                                    >
+                                        <Plus className="w-4 h-4 mr-2" />{window.location.pathname === '/login' ? "Register New User" : "Add New User"}
+                                    </Button>
+                                }
+                                handleSuccess={()=>{
+                                    setIsShowAddUserModal(false);
+                                    fetchAdminData();
+                                }}
+                            />
                         </div>
                     </>
                 )}

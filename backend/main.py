@@ -3,9 +3,13 @@ import uuid
 import pandas as pd
 from config import Config
 from database import Database
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, Response, status, Request
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from limits import parse
 from models import Image_ModelUpload, UserLogin, UserCreate, HeatmapUpload
 from services.auth_service import authService, oauth2_scheme
 from contextlib import asynccontextmanager
@@ -17,6 +21,7 @@ import numpy as np
 import cv2
 
 db:Database = Database()
+limiter = Limiter(key_func=get_remote_address)
 
 def save_model_to_disk(base64_str: str, model_name: str) -> str:
     """
@@ -127,12 +132,59 @@ def create_dummy():
         normal_user.password = hashed_password
         db.addUser(normal_user)
 
+async def request_limiter ( request: Request) -> bool|Response:
+    limit:str
+    auth_header = request.headers.get("Authorization")
+    ip = get_remote_address(request)
+    if ip == "127.0.0.1":
+        limit = "1000/minute"
+    elif auth_header:
+        try:
+            decoded_token = authService.decode_token(auth_header.split(" ")[1])
+            if decoded_token["role"] == 2:
+                limit = "100/minute"
+            else:
+                limit = "50/minute"
+        except HTTPException as e:
+            raise e
+    else :
+        path = request.url.path
+        if path.startswith("/api/register"):
+            limit = "2/day"
+        else:
+            limit = "50/hours"
+
+    try :
+        parsed_limit = parse(limit)
+        is_allowed_ip = limiter.limiter.hit(parsed_limit, "manual", ip)
+        is_allowed_token = limiter.limiter.hit(parsed_limit, "manual", auth_header) if auth_header else True
+        if not is_allowed_ip or not is_allowed_token:
+            raise RateLimitExceeded(limit=limit)
+        return True
+    except RateLimitExceeded as e:
+        raise e
+
+def check_authorization(request: Request) -> bool:
+    rdict = {'status': False}
+    auth_header = request.headers.get("Authorization")
+    if auth_header:
+        try:
+            rdict["payload"] = authService.decode_token(auth_header.split(" ")[1])
+            rdict["status"] = True
+            return rdict
+        except HTTPException as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials."
+            )
+    return rdict
+
 def get_current_user(token: str = Depends(oauth2_scheme)):
     payload = authService.decode_token(token)
     if payload["role"] != 1:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Please use user account to use heatmap features."
+            detail="Please use user account to use user standarize api."
         )
     return payload
 
@@ -149,6 +201,8 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title=Config.PROJECT_NAME, lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(admin_router)
 app.add_middleware(
     CORSMiddleware,
@@ -171,13 +225,44 @@ def login(userlogin: UserLogin):
     }
 
 @app.post('/api/register')
-def register(usercreate: UserCreate, admin: dict = Depends(get_current_admin)):
+def register(usercreate: UserCreate, authorize = Depends(check_authorization), _ = Depends(request_limiter)):
+    if authorize['status']:
+        if authorize["payload"]["role"] == 1:
+            raise HTTPException(status_code=403, detail="Authenticated users cannot register new accounts")
+    elif usercreate.role == 2 and not authorize['status'] and authorize["payload"]["role"] != 2:
+        raise HTTPException(status_code=403, detail="Only admins can create admin accounts")
+    elif not db.findUser(usercreate.email).empty:
+        raise HTTPException(status_code=500, detail="Email already used, please use other email to register new user account.")
     hashed_password = authService.hash_password(usercreate.password)
     usercreate.password = hashed_password
+
     result = db.addUser(usercreate)
-    if result.empty:
+    if not result:
         raise HTTPException(status_code=400, detail="User registration failed")
-    return {"message": "User registered successfully"}
+    
+    if not authorize['status']:
+        db_user = db.findUser(UserCreate.email)
+        token_data = {"sub": str(db_user["email"].loc[0]), "id": int(db_user["id"].loc[0]), "role": int(db_user["role"].loc[0])}
+        token = authService.create_access_token(token_data)
+        return {
+            "access_token": token,
+            "token_type": "bearer"
+        }
+    else:
+        return {"message": "User registered successfully"}
+    
+@app.delete('/api/user/delete/{user_id}')
+def delete_user(user_id: int, user_data: str = Depends(get_current_admin)):
+    result = db.findUserById(user_id)
+    if result.empty:
+        raise HTTPException(status_code=404, detail="User not found")
+    if int(result["role"].iloc[0]) == 2 and user_data["role"] != 2:
+        raise HTTPException(status_code=403, detail="Unauthorized to delete admin user")
+    deleted_rows = db.delUser(user_id)
+    if deleted_rows and deleted_rows > 0:
+        return {"message": "User deleted successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to delete user")
 
 @app.post('/api/model/upload')
 def upload_model(data: Image_ModelUpload, user_data: str = Depends(get_current_admin)):
@@ -199,7 +284,7 @@ async def get_model_file(model_id: int, token: str = Depends(oauth2_scheme)):
     authService.decode_token(token)
     row = db.findImageModel(model_id)[["model_path"]]
 
-    if row.size == 0:
+    if row.empty:
         raise HTTPException(status_code=404, detail="Model not found")
     
     file_path = row.loc[0].values[0]
@@ -214,8 +299,7 @@ def get_all_models(user_data: str = Depends(oauth2_scheme)):
 @app.delete('/api/model/delete/{model_id}')
 def delete_model_by_id(model_id: int, user_data: str = Depends(get_current_admin)):
     result = db.findImageModel(model_id)[["model_path", "user_id"]]
-    
-    if result.size == 0:
+    if result.empty:
         raise HTTPException(status_code=404, detail="Model not found")
     
     model_path, user_id = result.loc[0].values
@@ -249,7 +333,7 @@ def upload_heatmap(data: HeatmapUpload, token: str = Depends(oauth2_scheme)):
         len_point = len(formatted_points)
 
         model_path = db.findImageModel(data.model_id)[["model_path"]].loc[0].values[0]
-        if not model_path:
+        if not model_path or not Path(model_path).exists():
             raise HTTPException(status_code=404, detail="Model not found")
 
         model_data = cv2.imread(Path(model_path), cv2.IMREAD_COLOR)
@@ -293,7 +377,7 @@ def delete_heatmap_by_sessionid(session_id: int, token: str = Depends(oauth2_sch
     user_data = authService.decode_token(token)
     result = db.findHeatmap(session_id)[["image_path", "user_id"]]
     
-    if result.size == 0:
+    if result.empty:
         raise HTTPException(status_code=404, detail="Session not found")
     
     image_path, user_id = result.loc[0].values
