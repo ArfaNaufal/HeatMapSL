@@ -47,7 +47,7 @@ class AuthService():
         except jwt.PyJWTError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token" + e.__str__()
+                detail="Invalid token:\n" + e.__str__()
             )
     
 

@@ -6,6 +6,7 @@ import { Card } from '@/app/components/ui/card';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { useAuth } from '@/app/components/AuthContext';
+import { UserRegistrationDialog } from '@/app/components/DialogModals'
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -68,7 +69,7 @@ export function Login() {
                 />
               </div>
             </div>
-
+            
             <div className="space-y-2">
               <Label htmlFor="password" className="text-white">
                 Password
@@ -102,12 +103,38 @@ export function Login() {
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
+          <UserRegistrationDialog 
+              trigger= {
+                <Button
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-lg shadow-cyan-500/50"
+                >
+                  Sign Up
+                </Button>
+              }
+              handleSuccess={async (data) => {
+                try {
+                  const freshUser = await login(data.email, data.password);
+                  if (freshUser && freshUser?.role == 1) {
+                    navigate('/live-tracking');
+                  } else if (freshUser && freshUser?.role == 2) {
+                    navigate('/admin');
+                  } else {
+                    setError('Invalid credentials. please check your email and password.');
+                  }
+                } catch (err) {
+                  setError('An error occurred. Please try again.');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            />
         </Card>
 
         {/* Demo Credentials */}
         <Card className="bg-cyan-500/10 border-cyan-500/30 backdrop-blur-xl p-4">
           <p className="text-cyan-400 text-sm text-center mb-2">
-            Demo Credentials
+            Sign In Credentials
           </p>
           <div className="text-gray-300 text-sm space-y-1">
             <p className="text-center">

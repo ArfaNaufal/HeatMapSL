@@ -6,6 +6,7 @@ import { Input } from '@/app/components/ui/input';
 import { toast } from 'sonner';
 import { SecureHeatmap, SecureImageModel } from './SecureImage';
 import { API_URL } from '@/app/App';
+import { UserRegistrationDialog } from '@/app/components/DialogModals';
 
 export function AdminPanel() {
     const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'models' | 'heatmaps' | 'logs'>('stats');
@@ -27,16 +28,16 @@ export function AdminPanel() {
         setIsLoading(true);
         const headers = { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` };
         try {
-        const [dbRes, logRes] = await Promise.all([
-            fetch(`${API_URL}/admin/dashboard-data`, { headers }),
-            fetch(`${API_URL}/admin/logs`, { headers })
-        ]);
-        if (dbRes.ok) setData(await dbRes.json());
-        if (logRes.ok) setLogs(await logRes.text());
+            const [dbRes, logRes] = await Promise.all([
+                fetch(`${API_URL}/admin/dashboard-data`, { headers }),
+                fetch(`${API_URL}/admin/logs`, { headers })
+            ]);
+            if (dbRes.ok) setData(await dbRes.json());
+            if (logRes.ok) setLogs(await logRes.text());
         } catch (err) {
-        toast.error("Failed to sync with server.");
+            toast.error("Failed to sync with server.");
         } finally {
-        setIsLoading(false);
+            setIsLoading(false);
         }
     };
 
@@ -49,7 +50,7 @@ export function AdminPanel() {
           });
           if (response.ok) {
             const data = await response.json();
-            return data.status
+            return data.status;
           }
         } catch (err) {
           return false
@@ -58,29 +59,45 @@ export function AdminPanel() {
 
     const handleDeleteSession = async (sessionId: number) => {
         toast.promise(
-        fetch(`${API_URL}/heatmap/delete/${sessionId}`, {
-            method: 'DELETE',
-            headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            fetch(`${API_URL}/heatmap/delete/${sessionId}`, {
+                method: 'DELETE',
+                headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            }),
+            {
+                loading: 'Deleting session...',
+                success: ()=>{
+                    fetchAdminData();
+                    sessionId === viewHeatmapSessionId && setIsShowViewHeatmap(false);
+                    setViewHeatmapSessionId(null);
+                    return 'Session deleted successfully!'
+                },
+                error: 'Failed to delete session.'
             }
-        }),
-        {
-            loading: 'Deleting session...',
-            success: ()=>{
-            fetchAdminData();
-            sessionId === viewHeatmapSessionId && setIsShowViewHeatmap(false);
-            setViewHeatmapSessionId(null);
-            return 'Session deleted successfully!'
-            },
-            error: 'Failed to delete session.'
-        }
-        )
-    }
+        );
+    };
 
-    const handleAddUser = async (email: string, password: string, role: string) => {
-        
-    }
+    const handleDeleteUser = async (userId: number) => {
+        await toast.promise(
+            fetch(`${API_URL}/user/delete/${userId}`, {
+                method: 'DELETE',
+                headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            }),
+            {
+                loading: 'Deleting user...',
+                success: ()=>{
+                    fetchAdminData();
+                    return 'User deleted successfully!'
+                },
+                error: 'Failed to delete user.'
+            }
+        );
+    };
 
     const savedImage = async () => {
         if (!uploadedImage) return toast.error("No image uploaded.");
@@ -102,27 +119,49 @@ export function AdminPanel() {
             {
                 loading: 'Saving image model...',
                 success: ()=>{
-                fetchAdminData();
-                return 'Model saved successfully!'
+                    fetchAdminData();
+                    return 'Model saved successfully!'
                 },
                 error: 'Failed to save model data.'
             }
         );
-    }
+    };
 
-    const handleDeleteModel = async (modelId: number) => {}
+    const handleDeleteModel = async (modelId: number) => {
+        await toast.promise(
+            fetch(`${API_URL}/model/delete/${modelId}`, {
+                method: 'DELETE',
+                headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            }),
+            {
+                loading: 'Deleting model...',
+                success: ()=>{
+                    fetchAdminData();
+                    modelId === viewModelId && setIsShowViewModel(false);
+                    setViewModelId(null);
+                    return 'Model deleted successfully!'
+                },
+                error: 'Failed to delete model.'
+            }
+        )
+    };
+
     const handleUploadModel = async () => {
         if ((await checkSession(modelName))) return toast.error("Model name already used.");
         if (!modelName) return toast.error("Please name the model first.");
 
         await savedImage()
-    }
+    };
+
     useEffect(() => {
         if (isShowViewHeatmap) {
-        document.body.style.overflow = 'hidden';
-        viewHeatmapModalRef.current?.focus();
+            document.body.style.overflow = 'hidden';
+            viewHeatmapModalRef.current?.focus();
         } else {
-        document.body.style.overflow = 'unset';
+            document.body.style.overflow = 'unset';
         }
     }, [isShowViewHeatmap]);
 
@@ -274,7 +313,7 @@ export function AdminPanel() {
                                     </td>
                                     <td className="px-6 py-4 font-mono text-gray-400">{u.sessions}</td>
                                     <td className="px-6 py-4 text-right">
-                                        <Button variant="ghost" className="text-red-400 opacity-45 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></Button>
+                                        <Button variant="ghost" className="text-red-400 opacity-45 group-hover:opacity-100" onClick={()=>handleDeleteUser(u.id)}><Trash2 className="w-4 h-4" /></Button>
                                     </td>
                                     </tr>
                                 ))}
@@ -283,13 +322,21 @@ export function AdminPanel() {
                         </Card>
                     
                         <div className="flex space-x-2 p-1.5 rounded-2xl w-fit">
-                            <Button
-                                onClick={() => {setIsShowAddUserModal(true)}}
-                                variant="outline" 
-                                className="bg-white/5 border-white/10 text-cyan-400"
-                            >
-                                <Plus className="w-4 h-4 mr-2" /> Add User
-                            </Button>
+                            <UserRegistrationDialog
+                                trigger={
+                                    <Button
+                                        onClick={() => {setIsShowAddUserModal(true)}}
+                                        variant="outline" 
+                                        className="bg-white/5 border-white/10 text-cyan-400"
+                                    >
+                                        <Plus className="w-4 h-4 mr-2" />{window.location.pathname === '/login' ? "Register New User" : "Add New User"}
+                                    </Button>
+                                }
+                                handleSuccess={()=>{
+                                    setIsShowAddUserModal(false);
+                                    fetchAdminData();
+                                }}
+                            />
                         </div>
                     </>
                 )}
