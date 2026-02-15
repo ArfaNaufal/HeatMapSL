@@ -30,10 +30,10 @@ This project uses a base `compose.yml` and a production override `compose.prod.y
 
 ```bash
 # Build the images (using the production overrides)
-docker compose -f compose.yml -f compose.prod.yml build --no-cache
+docker compose -f compose.prod.yml build --no-cache
 
 # Start the containers in detached mode
-docker compose -f compose.yml -f compose.prod.yml up -d
+docker compose -f compose.prod.yml up -d
 ```
 
 ### Step 3: Verify Deployment
@@ -113,7 +113,7 @@ rm -rf backend/database.db
 touch backend/database.db
 
 # Restart
-docker compose -f compose.yml -f compose.prod.yml up -d
+docker compose -f compose.prod.yml up -d
 ```
 
 ## Project Structure Notes
