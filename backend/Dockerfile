@@ -15,6 +15,8 @@ COPY . .
 
 # Ensure storage directory exists
 RUN mkdir -p data/heatmap_storage
+RUN mkdir -p data/models
+RUN mkdir -p data/logs
 
 EXPOSE 8000
 

@@ -11,7 +11,9 @@ class Message ():
     """
         Message class for log in log text file.
     """
-    _basePath:str = os.getenv('logPath', './')
+
+
+    _basePath:Path|str = Path(os.getenv("LOG_PATH", "data/logs"))
     _Send: bool = False
     _Message: str
     _Code: str|None
@@ -19,6 +21,22 @@ class Message ():
     def __init__(self, message:str, code:str|None):
         self._Message = message
         self._Code = code if code else '-'
+        
+        try:
+            if (self._basePath.exists() == False):
+                self._basePath.parent.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            tempMessage = self._Message
+            tempCode = self._Code
+            self._Message = f"Failed to set log path: {str(e)}. Original message: {tempMessage}"
+            self._Code = "LOGPATHERROR"
+            self.addMessage()
+            self._Message = tempMessage
+            self._Code = tempCode
+            self._basePath = Path('./')
+            pass
+        
+
         self._Send = self.addMessage()
 
     def addMessage(self)->bool:
@@ -26,7 +44,7 @@ class Message ():
             Adding message to log, that located on {self._basePath}
         """
         try:
-            with open (self._basePath+'log.txt', "a") as op:
+            with open (self._basePath/'log.txt', "a") as op:
                 op.write(f'({dt.now().strftime("%Y-%m-%d|%I:%M:%S")}) {self}\n')
         except Exception as e:
             return False
@@ -46,6 +64,7 @@ class Setting():
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES', 30))
     HEATMAP_PATH: Path = Path(os.getenv("HEATMAP_PATH", "data/heatmap_storage"))
     MODEL_PATH = Path(os.getenv("MODEL_PATH", "data/models"))
+    LOG_PATH = Path(os.getenv("LOG_PATH", "data/logs"))
     ALGORITHM: str = os.getenv('ALGORITHM', 'HS256')
     DB_HOST: str = os.getenv('DB_HOST', 'localhost')
     DB_PATH: str = os.getenv('DB_PATH', 'database.db')

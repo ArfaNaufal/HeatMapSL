@@ -96,12 +96,12 @@ mv vite.config.ts vite.config.prod.ts
 cp vite.config.dev.ts vite.config.ts
 ```
 
-5. Start the development server (HTTPS enabled for WebGazer):
+4. Start the development server (HTTPS enabled for WebGazer):
 ```bash
 npm run dev
 ```
 
-4. Open `https://localhost:3000` in your browser.
+5. Open `https://localhost:3000` in your browser.
 - *Note: Accept the "Unsafe/Advanced" certificate warning to allow camera access.*
 
 # 3. Maintenance Commands

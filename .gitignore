@@ -14,7 +14,7 @@ backend/.env
 backend/services/__pycache__/
 backend/services/*.py[cod]
 backend/database.db
-backend/log.txt
+log.txt
 
 # Ignore the SQLite database and its temporary "journal" files
 backend/*.db
@@ -26,6 +26,7 @@ backend/*.db-wal
 # We ignore the content but keep the folder
 backend/data/heatmap_storage/**/*
 backend/data/models/**/*
+backend/data/logs/**/*
 
 # Node/Frontend
 frontend/node_modules/

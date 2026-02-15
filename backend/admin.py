@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import PlainTextResponse
 from database import Database
 from services.auth_service import authService, oauth2_scheme
-
+from config import Config
 import sqlite3
 
 db_admin:Database = Database()
@@ -54,7 +54,7 @@ async def get_dashboard_data(admin = Depends(get_current_admin)):
 
 @router.get("/logs", response_class=PlainTextResponse)
 async def get_logs(admin = Depends(get_current_admin)):
-    log_path = Path("log.txt")
+    log_path = Config.LOG_PATH / "log.txt"
     if not log_path.exists():
         raise HTTPException(status_code=404, detail="Log file not found")
     with open(log_path, "r") as f:

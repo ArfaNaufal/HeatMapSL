@@ -8,7 +8,8 @@ services:
     volumes:
       - ./backend/db:/app/db
       - ./backend/data/heatmap_storage:/app/data/heatmap_storage
-      - ./backend/log.txt:/app/log.txt
+      - ./backend/data/logs:/app/data/logs
+      - ./backend/data/models:/app/data/models
     env_file:
       - ./.env
     environment:
