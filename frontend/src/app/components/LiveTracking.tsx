@@ -1,14 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, CheckCircle2, X, Monitor, User, Eye, MousePointer2, MoveLeft } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Play, Pause, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card } from '@/app/components/ui/card';
-import { toast } from 'sonner';
+import { toast } from 'sonner'
 import { useAuth } from './AuthContext';
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogTrigger,
-} from '@/app/components/ui/alert-dialog';
 
 const CALIBRATION_POINTS = [
   { x: 10, y: 10 }, { x: 50, y: 10 }, { x: 90, y: 10 },
@@ -20,7 +15,6 @@ export function LiveTracking() {
   const { isCalibrated, setIsCalibrated } = useAuth();
   const [isTracking, setIsTracking] = useState(false);
   const [isCalibrating, setIsCalibrating] = useState(false);
-  const [isInstructionModalOpen, setIsInstructionModalOpen] = useState(false);
   const [clickCounts, setClickCounts] = useState<Record<number, number>>({});
   const [gazePoint, setGazePoint] = useState({ x: 50, y: 50 });
   const [allPointsDone, setAllPointsDone] = useState(false);
@@ -38,7 +32,6 @@ export function LiveTracking() {
       }).begin();
       wg.showVideoPreview(true).showPredictionPoints(true);
     }
-    return wg;
   };
 
   useEffect(() => {
@@ -60,21 +53,17 @@ export function LiveTracking() {
     }
   }, [allPointsDone, setIsCalibrated]);
 
-  const handleStartCalibration = async () => {
-    let wg = (window as any).webgazer;
-    
-    if (isCalibrated || wg.isReady()) {
-      await wg.resume();
-    } else {
-      wg = await initWebGazer();
-    }
+  const startCalibration = async () => {
+    const wg = (window as any).webgazer;
+    if (isCalibrated) await wg.resume();
+    else await initWebGazer();
     
     setIsCalibrating(true);
     setIsCalibrated(false);
     setClickCounts({});
 
-    const webgazerVideoContainer = document.getElementById('webgazerVideoContainer'); 
-    if (webgazerVideoContainer && webgazerVideoContainer.parentElement !== document.body) {
+    const webgazerVideoContainer = document.getElementById('webgazerVideoContainer') as HTMLElement; 
+    if (webgazerVideoContainer.parentElement !== document.body) {
         document.body.appendChild(webgazerVideoContainer);
         webgazerVideoContainer.style.position = 'fixed';
     }
@@ -98,38 +87,41 @@ export function LiveTracking() {
 
     setClickCounts(prev => {
       const newCounts = { ...prev, [index]: (prev[index] || 0) + 1 };
+      
       const completedPoints = Object.values(newCounts).filter(count => count >= CLICKS_REQUIRED).length;
 
       if (completedPoints === CALIBRATION_POINTS.length) {
         setAllPointsDone(true);
+
       }
+      
       return newCounts;
     });
   };
 
   const toggleTracking = async () => {
     const wg = (window as any).webgazer;
-    const webgazerVideoContainer = document.getElementById('webgazerVideoContainer'); 
-    
+    const webgazerVideoContainer = document.getElementById('webgazerVideoContainer') as HTMLElement; 
     if (!isTracking) {
       await initWebGazer();
       
-      if (webgazerVideoContainer) {
-        const cameraContainer = document.getElementById('cameraContainer');
-        if (cameraContainer) {
+      if (webgazerVideoContainer.parentElement === document.body) {
+        const cameraContainer = document.getElementById('cameraContainer') as HTMLElement;
+        if (cameraContainer)
           cameraContainer.appendChild(webgazerVideoContainer);
           webgazerVideoContainer.style.position = 'relative';
-          webgazerVideoContainer.style.top = '0';
-          webgazerVideoContainer.style.left = '0';
-        }
       }
 
       wg.resume();
       setIsTracking(true);
       wg.showPredictionPoints(true);
       wg.showVideoPreview(true);
+      wg.showVideo(true);
+      wg.showFaceFeedbackBox(true);
+      wg.showFaceOverlay(true);
+
     } else {
-      if (webgazerVideoContainer) {
+      if (webgazerVideoContainer.parentElement !== document.body) {
           document.body.appendChild(webgazerVideoContainer);
           webgazerVideoContainer.style.position = 'fixed';
       }
@@ -138,6 +130,9 @@ export function LiveTracking() {
       setIsTracking(false);
       wg.showPredictionPoints(false);
       wg.showVideoPreview(false);
+      wg.showVideo(false);
+      wg.showFaceFeedbackBox(false);
+      wg.showFaceOverlay(false);
     }
   };
 
@@ -146,9 +141,12 @@ export function LiveTracking() {
       const wg = (window as any).webgazer;
       if (wg) {
         wg.pause();
-        const container = document.getElementById('webgazerVideoContainer');
-        if (container && container.parentElement !== document.body){
-          document.body.appendChild(container);
+        wg.showVideoPreview(false);
+        wg.showPredictionPoints(false);
+        const webgazerVideoContainer = document.getElementById('webgazerVideoContainer') as HTMLElement; 
+        if (webgazerVideoContainer && webgazerVideoContainer.parentElement !== document.body){
+          document.body.appendChild(webgazerVideoContainer);
+          webgazerVideoContainer.style.position = 'fixed';
         }
       }
     };
@@ -156,84 +154,18 @@ export function LiveTracking() {
 
   return (
     <div className="space-y-6 relative">
-      
-     
-      <AlertDialog open={isInstructionModalOpen} onOpenChange={setIsInstructionModalOpen}>
-        <AlertDialogContent className="!max-w-4xl bg-indigo-100/95 backdrop-blur-xl border-slate-700 text-white p-0 overflow-hidden shadow-2xl">
-            
-           
-            <button 
-                onClick={() => setIsInstructionModalOpen(false)}
-                className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors"
-            >
-                <X className="w-8 h-8" />
-            </button>
-
-            <div className="flex flex-col items-center justify-center py-16 px-8 space-y-16">
-                
-               
-                <h2 className="text-5xl font-bold text-violet-700 tracking-tight">Calibration</h2>
-
-             
-                <div className="flex items-center justify-center gap-12 md:gap-24 w-full">
-                    
-                   
-                    <div className="relative group">
-                        <Monitor strokeWidth={1.5} className="w-32 h-32 text-slate-600" />
-                        <div className="absolute inset-0 flex items-center justify-center pb-2">
-                             <User strokeWidth={1.5} className="w-16 h-16 text-slate-400" />
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-indigo-600 shadow-[0_0_20px_rgba(75, 0, 130, 1.0)]" />
-                        <MoveLeft className="w-8 h-8 text-slate-500 animate-pulse dashed" style={{ strokeDasharray: "4 4" }} />
-                        <div className="flex gap-1">
-                            <div className="bg-white rounded-full p-1"><Eye className="w-8 h-8 text-slate-900 fill-slate-900" /></div>
-                            <div className="bg-white rounded-full p-1"><Eye className="w-8 h-8 text-slate-900 fill-slate-900" /></div>
-                        </div>
-                    </div>
-
-                   
-                    <div className="relative flex items-center">
-                         
-                        <div className="absolute -left-8 w-12 h-12 rounded-full bg-indigo-700/20" />
-                        <div className="absolute -left-4 w-12 h-12 rounded-full bg-indigo-700/40" />
-                        \
-                        <div className="w-14 h-14 rounded-full bg-indigo-600 shadow-[0_0_20px_rgba(75, 0, 130, 1.0)] flex items-center justify-center z-10">
-                            
-                            <MousePointer2 className="w-8 h-8 text-white fill-white absolute -bottom-4 -right-4 drop-shadow-md" />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="text-center space-y-3">
-                    <p className="text-xl text-slate-900">Make sure your whole face is visible in the camera.</p>
-                    <p className="text-xl text-slate-900">Follow the dots with your eyes and click to calibrate.</p>
-                </div>
-
-                <Button 
-                    size="lg"
-                    className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold text-lg px-12 py-6 rounded-full shadow-[0_0_30px_rgba(6,182,212,0.4)] transition-all hover:scale-105"
-                    onClick={() => {
-                        setIsInstructionModalOpen(false);
-                        handleStartCalibration();
-                    }}
-                >
-                    Start Calibration
-                </Button>
-
-            </div>
-        </AlertDialogContent>
-      </AlertDialog>
-
       {isCalibrating && (
-        <div className="fixed inset-0 z-[9999] bg-slate-950/90 cursor-crosshair">
+        <div className="fixed inset-0 z-[9999] bg-transparent cursor-crosshair">
           {CALIBRATION_POINTS.map((point, index) => {
             const clicks = clickCounts[index] || 0;
             const isDone = clicks >= CLICKS_REQUIRED;
-            const peripheralDoneCount = CALIBRATION_POINTS.reduce((acc, _, i) => 
-              i !== 4 && (clickCounts[i] || 0) >= CLICKS_REQUIRED ? acc + 1 : acc, 0
-            );
+
+            const peripheralDoneCount = CALIBRATION_POINTS.reduce((acc, _, i) => {
+              if (i !== 4 && (clickCounts[i] || 0) >= CLICKS_REQUIRED) {
+                return acc + 1;
+              }
+              return acc;
+            }, 0);
 
             const isMiddleDot = index === 4;
             const shouldShow = !isMiddleDot || peripheralDoneCount === 8;
@@ -253,26 +185,27 @@ export function LiveTracking() {
                   position: 'absolute',
                   transform: 'translate(-50%, -50%)',
                 }}
-                className={`w-10 h-10 rounded-full border-4 border-white flex items-center justify-center transition-all duration-200 ${
+                className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold ${
                   isDone 
-                    ? 'bg-green-500 opacity-0 scale-50' 
-                    : 'bg-cyan-500 shadow-[0_0_30px_rgba(34,211,238,0.8)] animate-pulse hover:scale-125'
+                    ? 'bg-green-500 opacity-60' 
+                    : 'bg-cyan-500 shadow-[0_0_15px_rgba(34,211,238,0.8)] animate-pulse scale-110'
                 }`}
               >
-                {!isDone && <div className="w-2 h-2 bg-white rounded-full" />}
+                {!isDone && (CLICKS_REQUIRED - clicks)}
               </button>
             );
           })}
           
-          <div className="absolute top-12 left-1/2 -translate-x-1/2 pointer-events-none text-center space-y-2">
-             <h3 className="text-3xl font-bold text-white drop-shadow-lg">Calibration in Progress</h3>
-             <p className="text-cyan-200 text-lg bg-black/40 px-6 py-2 rounded-full backdrop-blur-sm">
-                Look at the dot and click it {CLICKS_REQUIRED} times
-             </p>
+          {/* Dynamic Instruction Message */}
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+            <p className="text-white bg-black/60 px-6 py-3 rounded-full backdrop-blur-md border border-white/10">
+              Click each dot {CLICKS_REQUIRED} times while looking at it
+            </p>
           </div>
       </div>
       )}
 
+      {/* --- ORIGINAL UI LAYOUT --- */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl text-white font-bold">Live Eye Tracking</h2>
@@ -280,7 +213,7 @@ export function LiveTracking() {
         </div>
         <div className="flex space-x-2">
           <Button
-            onClick={() => setIsInstructionModalOpen(true)}
+            onClick={startCalibration}
             variant="outline"
             className="bg-white/10 border-white/20 text-white hover:bg-white/20"
           >
