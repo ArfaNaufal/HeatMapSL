@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ghcr.io/eyapa/eygazeheatmap_backend_v1:latest
+    image: eyapa/eyegazeheatmap:backend_v1
     ports:
       - "8000:8000"
     env_file:
@@ -10,7 +10,7 @@ services:
       - ./backend/db:/app/db
 
   frontend:
-    image: ghcr.io/eyapa/eygazeheatmap_frontend_v1:latest
+    image: pull eyapa/eyegazeheatmap:frontend_v1
     ports:
       - "80:80"
     volumes:
