@@ -10,7 +10,7 @@ services:
       - ./backend/db:/app/db
 
   frontend:
-    image: pull eyapa/eyegazeheatmap:frontend_v1
+    image: eyapa/eyegazeheatmap:frontend_v1
     ports:
       - "80:80"
     volumes:
